@@ -23,7 +23,6 @@ application = None
 # ────────────────────────────────────────────────
 # Inline Keyboards
 # ────────────────────────────────────────────────
-
 def get_main_menu_keyboard():
     keyboard = [
         [InlineKeyboardButton("🔍 ID Check Karo", callback_data="search")],
@@ -31,7 +30,6 @@ def get_main_menu_keyboard():
         [InlineKeyboardButton("👨‍💻 Developer se Baat", url="https://t.me/Nullprotocol_X")],
     ]
     return InlineKeyboardMarkup(keyboard)
-
 
 def get_after_search_keyboard():
     keyboard = [
@@ -43,7 +41,6 @@ def get_after_search_keyboard():
 # ────────────────────────────────────────────────
 # Command Handlers
 # ────────────────────────────────────────────────
-
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
         "Hey bhai! 👋\n\n"
@@ -52,7 +49,6 @@ async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
         "Bas User ID bhej do (jaise 123456789) ya neeche buttons se start karo!",
         reply_markup=get_main_menu_keyboard()
     )
-
 
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     await update.message.reply_text(
@@ -65,15 +61,12 @@ async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=get_main_menu_keyboard()
     )
 
-
 # ────────────────────────────────────────────────
 # Inline Button Callback
 # ────────────────────────────────────────────────
-
 async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
     query = update.callback_query
     await query.answer()
-
     if query.data == "search":
         await query.message.reply_text(
             "Bhai ab User ID bhej do (example: 123456789) 😎"
@@ -89,13 +82,10 @@ async def button_callback(update: Update, context: ContextTypes.DEFAULT_TYPE):
             reply_markup=get_main_menu_keyboard()
         )
 
-
 # ────────────────────────────────────────────────
 # Main Search Logic
 # ────────────────────────────────────────────────
-
 async def search_userid(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    # Command se args ya direct text se userid le lo
     if context.args:
         userid = context.args[0].strip()
     else:
@@ -107,7 +97,6 @@ async def search_userid(update: Update, context: ContextTypes.DEFAULT_TYPE):
         )
         return
 
-    # Searching message bhej ke edit karenge baad mein
     searching_msg = await update.message.reply_text(
         f"🔍 User ID {userid} check kar raha hoon... Ruk ja 2 sec!"
     )
@@ -123,10 +112,8 @@ async def search_userid(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 country_code = "N/A"
                 number = "N/A"
 
-                # API response handle karo (dono formats)
                 if isinstance(data, dict):
                     status = data.get("status", "").lower()
-
                     if status in ["success", "ok"]:
                         inner = data.get("data", {})
                         found = inner.get("found", False)
@@ -135,19 +122,15 @@ async def search_userid(update: Update, context: ContextTypes.DEFAULT_TYPE):
                             country = inner.get("country", "N/A")
                             country_code = inner.get("country_code", "N/A")
                             number = inner.get("number", "N/A")
-
                     elif status == "not_found" or data.get("code") == 404:
                         inner = data.get("data", {})
                         found = inner.get("found", False)
                         message_text = inner.get("message", "Phone number not found")
-
                     else:
                         message_text = data.get("message", "Unexpected response from API")
 
-                # Final clean message
                 response_text = f"{'✅' if found else '❌'} {'Mil gaya bhai!' if found else 'Sorry bhai, kuch nahi mila'}\n\n"
                 response_text += f"Message: {message_text}\n"
-
                 if found:
                     response_text += f"Country: {country}\n"
                     response_text += f"Country Code: {country_code}\n"
@@ -161,64 +144,58 @@ async def search_userid(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 )
 
         except Exception as e:
-            error_text = (
-                f"⚠️ Oops! Kuch gadbad ho gayi\n"
-                f"Error: {str(e)}\n"
-                "Thodi der baad phir try karna bhai"
-            )
+            error_text = f"⚠️ Oops! Kuch gadbad ho gayi\nError: {str(e)}\nThodi der baad phir try karna bhai"
             error_text += "\n\nDeveloper: @Nullprotocol_X\nPowered by: NULL PROTOCOL"
-
-            await searching_msg.edit_text(
-                error_text,
-                reply_markup=get_after_search_keyboard()
-            )
-
+            await searching_msg.edit_text(error_text, reply_markup=get_after_search_keyboard())
 
 # ────────────────────────────────────────────────
 # FastAPI Webhook Setup
 # ────────────────────────────────────────────────
-
 @app.on_event("startup")
 async def startup_event():
     global application
     application = Application.builder().token(TOKEN).build()
 
-    # Handlers add karo
     application.add_handler(CommandHandler("start", start))
     application.add_handler(CommandHandler("help", help_command))
     application.add_handler(CommandHandler("search", search_userid))
     application.add_handler(CallbackQueryHandler(button_callback))
     application.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, search_userid))
 
-    # Webhook set Telegram pe
-    webhook_url = f"https://{os.getenv('RENDER_EXTERNAL_HOSTNAME')}/{WEBHOOK_SECRET}"
-    await application.bot.set_webhook(
-        url=webhook_url,
-        allowed_updates=Update.ALL_TYPES,
-        drop_pending_updates=True
-    )
-    print(f"Webhook set ho gaya: {webhook_url}")
+    # Webhook URL sahi tarah banao (double https avoid karne ke liye)
+    hostname = os.getenv('RENDER_EXTERNAL_HOSTNAME')
+    if hostname:
+        webhook_url = f"https://{hostname}/{WEBHOOK_SECRET}"
+    else:
+        # Local testing ya fallback
+        webhook_url = f"https://tg2num1.onrender.com/{WEBHOOK_SECRET}"
 
+    print(f"Webhook URL ban gaya: {webhook_url}")
+
+    try:
+        await application.bot.set_webhook(
+            url=webhook_url,
+            allowed_updates=Update.ALL_TYPES,
+            drop_pending_updates=True
+        )
+        print(f"Webhook set ho gaya: {webhook_url}")
+    except Exception as e:
+        print(f"Webhook set karne mein error: {str(e)}")
 
 @app.post(f"/{WEBHOOK_SECRET}")
 async def webhook(request: Request):
     if application is None:
         raise HTTPException(status_code=503, detail="Bot not ready")
-
     update_dict = await request.json()
     update = Update.de_json(update_dict, application.bot)
-
     if update:
         await application.process_update(update)
         return {"ok": True}
-
     raise HTTPException(status_code=400, detail="Invalid update")
-
 
 @app.get("/")
 async def root():
     return {"status": "NULL PROTOCOL Bot is live! 🚀"}
-
 
 if __name__ == "__main__":
     port = int(os.getenv("PORT", 8000))
